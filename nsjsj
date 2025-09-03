@@ -1,0 +1,63 @@
+const chalk = require('chalk');
+const inquirer = require('inquirer');
+
+class ReportBot {
+  constructor(client) {
+    this.client = client;
+    this.supportChannels = [
+      '120363022878066437@g.us',  // WhatsApp Support
+      '120363019502525899@g.us'   // Report Channel
+    ];
+  }
+
+  async sendReports() {
+    console.log(chalk.green.bold(`
+╔══════════════════════════════════════╗
+║         🤖 AUTO-REPORT BOT          ║
+╚══════════════════════════════════════╝
+    `));
+
+    const { target, type } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'target',
+        message: chalk.red.bold('TARGET:'),
+        choices: [
+          { name: 'Akun Sendiri', value: 'self' },
+          { name: 'Saluran Sendiri', value: 'channel' }
+        ]
+      },
+      {
+        type: 'list',
+        name: 'type',
+        message: chalk.red.bold('TIPE LAPORAN:'),
+        choices: [
+          { name: 'Spam', value: 'spam' },
+          { name: 'Permintaan Penonaktifan', value: 'deactivate' },
+          { name: 'Pelanggaran', value: 'violation' }
+        ]
+      }
+    ]);
+
+    console.log(chalk.cyan.bold(`[📤] Sending ${type} reports...`));
+
+    for (const channel of this.supportChannels) {
+      const report = this.buildReport(target, type);
+      await this.client.sendMessage(channel, report);
+      console.log(chalk.green.bold(`[✓] Report sent to ${channel}`));
+    }
+
+    console.log(chalk.green.bold('[✓] All reports sent successfully!'));
+  }
+
+  buildReport(target, type) {
+    const templates = {
+      spam: `🚨 SPAM REPORT\nTarget: ${target}\nFrom: ${this.client.info.wid.user}\nDate: ${new Date().toLocaleString('id-ID')}`,
+      deactivate: `🗑️ DEACTIVATION REQUEST\nTarget: ${target}\nReason: Self-request\nAccount: ${this.client.info.wid.user}`,
+      violation: `⚠️ VIOLATION REPORT\nTarget: ${target}\nReporter: ${this.client.info.pushname}\nStatus: Confirmed violation`
+    };
+    return templates[type];
+  }
+}
+
+module.exports = { ReportBot };
