@@ -1,0 +1,12 @@
+// save as auto-install.js
+const { execSync } = require('child_process');
+console.log('🚀 Installing WhatsApp Ban Terminal v8.0...'.red.bold);
+
+// Install deps silently
+try {
+  execSync('npm install whatsapp-web.js qrcode-terminal chalk ora inquirer@8 fs-extra progress axios --silent', { stdio: 'inherit' });
+  require('./setup-complete.js');
+  console.log('✅ READY! Run: node index.js'.green.bold);
+} catch (e) {
+  console.log('❌ Install failed. Run: npm install'.red);
+}
