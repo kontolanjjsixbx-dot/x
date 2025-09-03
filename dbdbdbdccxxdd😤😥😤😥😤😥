@@ -1,0 +1,35 @@
+const chalk = require('chalk');
+const ora = require('ora');
+
+class PremiumUI {
+  showBanner() {
+    console.clear();
+    console.log(chalk.red.bold(`
+╔══════════════════════════════════════╗
+║     WHATSAPP SELF-BAN TERMINAL      ║
+║         v8.0 ULTRA PREMIUM           ║
+╚══════════════════════════════════════╝
+    `));
+  }
+
+  async showLoading(text, duration = 3) {
+    const spinner = ora({
+      text: text.cyan,
+      spinner: 'bouncingBar',
+      color: 'cyan'
+    }).start();
+
+    await new Promise(resolve => setTimeout(resolve, duration * 1000));
+    spinner.stop();
+  }
+
+  showSuccess(message) {
+    console.log(`[✓]`.green + ` ${message}`.bold);
+  }
+
+  showError(message) {
+    console.log(`[✗]`.red + ` ${message}`.bold);
+  }
+}
+
+module.exports = { PremiumUI };
