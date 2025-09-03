@@ -1,0 +1,60 @@
+require('colors');
+const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
+const inquirer = require('inquirer');
+const { BanEngine } = require('./ban-engine');
+const { ReportBot } = require('./report-bot');
+const { PremiumUI } = require('./premium-ui');
+
+class WhatsAppTerminator {
+  constructor() {
+    this.client = new Client({
+      authStrategy: new LocalAuth({ dataPath: './sessions' }),
+      puppeteer: { headless: true, args: ['--no-sandbox'] }
+    });
+    this.banEngine = new BanEngine(this.client);
+    this.reportBot = new ReportBot(this.client);
+    this.ui = new PremiumUI();
+  }
+
+  async start() {
+    this.ui.showBanner();
+    this.client.on('qr', qr => qrcode.generate(qr, { small: false }));
+    this.client.on('ready', () => this.mainMenu());
+    this.client.initialize();
+  }
+
+  async mainMenu() {
+    const { mode } = await inquirer.prompt([{
+      type: 'list',
+      name: 'mode',
+      message: 'MODE:'.red.bold,
+      choices: [
+        { name: '💣 BAN AKUN SENDIRI', value: 'nuke-account' },
+        { name: '📱 BAN SALURAN SENDIRI', value: 'nuke-channel' },
+        { name: '📊 AUTO-REPORT STATUS', value: 'report' },
+        { name: '💾 PREMIUM BACKUP', value: 'backup' },
+        { name: '❌ EXIT', value: 'exit' }
+      ]
+    }]);
+
+    switch(mode) {
+      case 'nuke-account':
+        await this.banEngine.destroyAccount();
+        break;
+      case 'nuke-channel':
+        await this.banEngine.destroyChannel();
+        break;
+      case 'report':
+        await this.reportBot.sendReports();
+        break;
+      case 'backup':
+        await this.banEngine.createPremiumBackup();
+        break;
+      case 'exit':
+        process.exit(0);
+    }
+  }
+}
+
+new WhatsAppTerminator().start();
