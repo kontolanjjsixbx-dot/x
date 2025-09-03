@@ -1,0 +1,29 @@
+// save as setup.js
+const fs = require('fs');
+const { execSync } = require('child_process');
+
+console.log('🚀 WhatsApp Self-Ban Premium Setup'.red);
+
+// Auto-install dependencies
+const deps = [
+  'whatsapp-web.js@latest',
+  'qrcode-terminal',
+  'chalk@4',
+  'ora',
+  'inquirer@8',
+  'fs-extra',
+  'progress',
+  'axios',
+  'colors'
+];
+
+deps.forEach(dep => {
+  try {
+    require.resolve(dep);
+  } catch {
+    console.log(`Installing ${dep}...`.yellow);
+    execSync(`npm install ${dep} --silent`, { stdio: 'inherit' });
+  }
+});
+
+console.log('✅ All dependencies installed!'.green);
